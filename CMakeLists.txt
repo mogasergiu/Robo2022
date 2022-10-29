@@ -3,9 +3,13 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 project(sumo C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -O3")
 pico_sdk_init()
+include_directories(include)
 add_executable(${PROJECT_NAME}
         main.c
+        drivers/i2c.c
+        drivers/lsm6dsox.c
 )
 pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
