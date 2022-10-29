@@ -7,7 +7,8 @@ int i2c_write_byte(uint8_t saddr, uint8_t reg, uint8_t value)
     msg[0] = reg;
     msg[1] = value;
 
-    pr_debug("%s:%u Writing to saddr %x reg %x value %x", saddr, reg, value);
+    pr_debug("%s:%u Writing to saddr %x reg %x value %x\n", __func__, __LINE__,
+             saddr, reg, value);
 
     return i2c_write_blocking(i2c_default, saddr, msg, sizeof(msg), false);
 }
@@ -16,12 +17,12 @@ int i2c_read_byte(uint8_t saddr, uint8_t reg, uint8_t *value)
 {
     int ret;
 
-    pr_debug("%s:%u Writing to saddr %x reg %x", saddr, reg);
+    pr_debug("%s:%u Writing to saddr %x reg %x\n", __func__, __LINE__, saddr, reg);
     ret = i2c_write_blocking(i2c_default, saddr, &reg, sizeof(reg), false);
     if (ret <= 0)
         return -1;
 
-    pr_debug("%s:%u Reading from saddr %x reg %x", saddr, reg);
+    pr_debug("%s:%u Reading from saddr %x reg %x\n", __func__, __LINE__, saddr, reg);
     ret = i2c_read_blocking(i2c_default, saddr, value, sizeof(*value), false);
     if (ret <= 0)
         return -1;
