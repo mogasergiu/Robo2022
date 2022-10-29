@@ -1,4 +1,4 @@
-#include "lsm6dsox.h"
+#include <lsm6dsox.h>
 #include <debug.h>
 
 static const gpio_t gpios[] = {
