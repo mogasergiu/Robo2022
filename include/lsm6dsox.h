@@ -23,7 +23,9 @@
 
 typedef struct {
     const position_ops_t * const acc;
+    position_t apos;
     const position_ops_t * const gyro;
+    position_t gpos;
     const i2c_slave_ops_t * const ops;
     const gpio_t * const gpios;
 } lsm6dsox_t;
