@@ -8,10 +8,10 @@
 #include <gpio.h>
 #include <pwm.h>
 
-#define MOTOR_BACK0 0
-#define MOTOR_FRONT0 1
-#define MOTOR_BACK1 2
-#define MOTOR_FRONT1 3
+#define MOTOR_RIGHT_BACK 0
+#define MOTOR_RIGHT_FRONT 1
+#define MOTOR_LEFT_BACK 2
+#define MOTOR_LEFT_FRONT 3
 
 #define SENSOR_LOWER_LEFT (1 << 0)  // D9_GPIO21
 #define SENSOR_LOWER_RIGHT (1 << 1)  // D12_GPIO4_CIPO
