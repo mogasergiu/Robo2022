@@ -1,5 +1,6 @@
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
+#include "hardware/sync.h"
 #include "pico/binary_info.h"
 #include "pico/multicore.h"
 #include <lsm6dsox.h>
@@ -42,63 +43,99 @@ static gpio_t gpios[] = {
         .is_out = true,
     },
     {
-        .num = D9_GPIO21,
-        .is_irq = true,
-        .irq_type = GPIO_IRQ_LEVEL_HIGH,
-        .func = GPIO_FUNC_PIO1,
+        .num = D10_GPIO5,  // 0 to 3v3
+        // .is_irq = true,
+        .irq_type = GPIO_IRQ_EDGE_RISE,
+        // .func = GPIO_FUNC_PIO1,
+        // .is_out = true,
     },
     {
-        .num = D12_GPIO4_CIPO,
-        .is_irq = true,
-        .irq_type = GPIO_IRQ_LEVEL_HIGH,
-        .func = GPIO_FUNC_PIO1,
+        .num = D8_GPIO20,  // 0 to 3v3
+        // .is_irq = true,
+        .irq_type = GPIO_IRQ_EDGE_RISE,
+        // .func = GPIO_FUNC_PIO1,
+        // .is_out = true,
     },
     {
-        .num = D8_GPIO20,
-        .is_irq = true,
-        .irq_type = GPIO_IRQ_LEVEL_LOW,
-        .func = GPIO_FUNC_PIO1,
+        .num = D11_GPIO7_COPI,  // 0 to 3v3
+        // .is_irq = true,
+        .irq_type = GPIO_IRQ_EDGE_RISE,
+        // .func = GPIO_FUNC_PIO1,
+        // .is_out = true,
     },
     {
-        .num = D10_GPIO5,
-        .is_irq = true,
-        .irq_type = GPIO_IRQ_LEVEL_LOW,
-        .func = GPIO_FUNC_PIO1,
+        .num = D9_GPIO21,  // 3v3 to 0
+        // .is_irq = true,
+        .irq_type = GPIO_IRQ_EDGE_FALL,
+        // .func = GPIO_FUNC_PIO1,
+        // .is_out = true,
     },
     {
-        .num = D11_GPIO7_COPI,
-        .is_irq = true,
-        .irq_type = GPIO_IRQ_LEVEL_LOW,
-        .func = GPIO_FUNC_PIO1,
+        .num = D12_GPIO4_CIPO,  // 3v3 to 0
+        // .is_irq = true,
+        .irq_type = GPIO_IRQ_EDGE_FALL,
+        // .func = GPIO_FUNC_PIO1,
+        // .is_out = true,
     },
 };
 
 static uint8_t sensor_mask;
 
+static inline void invert_irq_and_set_sensor_bit(uint gpio_num, uint8_t sensor_bit,
+                                                 enum gpio_irq_level irq_type)
+{
+    if (irq_type == GPIO_IRQ_EDGE_RISE)
+        if (sensor_mask & sensor_bit) {
+            sensor_mask &= ~sensor_bit;
+            gpio_set_irq_enabled(gpio_num, GPIO_IRQ_EDGE_RISE, true);
+            pr_debug("Setting %u GPIO to GPIO_IRQ_EDGE_RISE\n", gpio_num);
+        } else {
+            sensor_mask |= sensor_bit;
+            gpio_set_irq_enabled(gpio_num, GPIO_IRQ_EDGE_FALL, true);
+            pr_debug("Setting %u GPIO to GPIO_IRQ_EDGE_FALL\n", gpio_num);
+        }
+    else
+        if (sensor_mask & sensor_bit) {
+            sensor_mask &= ~sensor_bit;
+            gpio_set_irq_enabled(gpio_num, GPIO_IRQ_EDGE_FALL, true);
+            pr_debug("Setting %u GPIO to GPIO_IRQ_EDGE_FALL\n", gpio_num);
+        } else {
+            sensor_mask |= sensor_bit;
+            gpio_set_irq_enabled(gpio_num, GPIO_IRQ_EDGE_RISE, true);
+            pr_debug("Setting %u GPIO to GPIO_IRQ_EDGE_RISE\n", gpio_num);
+        }
+}
+
 static void gpio_irq_handler(uint gpio_num, uint32_t event_mask)
 {
+    uint32_t irq_ctx;
+    
+    irq_ctx = save_and_disable_interrupts();
+
     switch (gpio_num) {
-    case D9_GPIO21:
-        sensor_mask |= SENSOR_LOWER_LEFT;  // lower-left
-        pr_debug("D9_GPIO21 start-stop interrupt\n");
-        break;
-    case D12_GPIO4_CIPO:
-        sensor_mask |= SENSOR_LOWER_RIGHT;  // lower-right
-        pr_debug("D12_GPIO4_CIPO button INT\n");
+    case D10_GPIO5:
+        invert_irq_and_set_sensor_bit(gpio_num, SENSOR_LOWER_LEFT, GPIO_IRQ_EDGE_RISE);
+        pr_debug("D10_GPIO5 SENSOR_LOWER_LEFT INT\n");
         break;
     case D8_GPIO20:
-        sensor_mask |= SENSOR_MIDDLE;  // middle
-        pr_debug("D8_GPIO20 button INT\n");
-        break;
-    case D10_GPIO5:
-        sensor_mask |= SENSOR_UPPER_LEFT;  // upper-left
-        pr_debug("D10_GPIO5 button INT\n");
+        invert_irq_and_set_sensor_bit(gpio_num, SENSOR_LOWER_RIGHT, GPIO_IRQ_EDGE_RISE);
+        pr_debug("D8_GPIO20 SENSOR_LOWER_RIGHT INT\n");
         break;
     case D11_GPIO7_COPI:
-        sensor_mask |= SENSOR_UPPER_RIGHT;  // upper-right
-        pr_debug("D11_GPIO7_COPI button INT\n");
+        invert_irq_and_set_sensor_bit(gpio_num, SENSOR_MIDDLE, GPIO_IRQ_EDGE_RISE);
+        pr_debug("D11_GPIO7_COPI SENSOR_MIDDLE INT\n");
+        break;
+    case D9_GPIO21:
+        invert_irq_and_set_sensor_bit(gpio_num, SENSOR_UPPER_LEFT, GPIO_IRQ_EDGE_FALL);
+        pr_debug("D9_GPIO21 SENSOR_UPPER_LEFT INT\n");
+        break;
+    case D12_GPIO4_CIPO:
+        invert_irq_and_set_sensor_bit(gpio_num, SENSOR_UPPER_RIGHT, GPIO_IRQ_EDGE_FALL);
+        pr_debug("D12_GPIO4_CIPO SENSOR_UPPER_RIGHT INT\n");
         break;
     }
+    
+    restore_interrupts(irq_ctx);
 }
 
 static int init_all()
