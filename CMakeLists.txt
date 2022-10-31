@@ -9,6 +9,7 @@ add_executable(${PROJECT_NAME}
         core0.c
         core1.c
         drivers/i2c.c
+        drivers/pwm.c
         drivers/lsm6dsox.c
 )
 pico_add_extra_outputs(${PROJECT_NAME})
