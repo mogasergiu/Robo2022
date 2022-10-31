@@ -110,7 +110,7 @@ static int init_all()
     sleep_ms(2000);
 #endif
 
-    set_sys_clock_khz(220000, true);
+    set_sys_clock_khz(200000, true);
 
     gpio_set_irq_callback(&gpio_irq_handler);
     irq_set_enabled(IO_IRQ_BANK0, true);

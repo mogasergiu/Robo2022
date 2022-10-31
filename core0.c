@@ -77,7 +77,7 @@ static int init_all()
 
     i2c_init(i2c_default, 400 * 1000);
 
-    set_sys_clock_khz(220000, true);
+    set_sys_clock_khz(200000, true);
 
     ret = lsm6dsox.ops->probe();
     if (ret < 0) {

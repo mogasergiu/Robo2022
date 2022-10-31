@@ -1,4 +1,5 @@
 #include <pwm.h>
+#include <debug.h>
 
 static inline uint map_get(uint val, uint low_from, uint high_from,
                            uint low_to, uint high_to)
@@ -16,7 +17,8 @@ void pwm_gpio_enable(gpio_t *gpio)
 
     pwm_set_wrap(slice_num, DEFAULUT_PWM_WRAP);
     pwm_set_chan_level(slice_num, channel, 0);
-    pwm_set_clkdiv(slice_num, 46.f);
+    // pwm_set_clkdiv(slice_num, 46.f);  clock divisor for 220Mhz overclock
+    pwm_set_clkdiv(slice_num, 50.f);  // clock divisor for 200Mhz
     pwm_set_enabled(slice_num, true);
 }
 
