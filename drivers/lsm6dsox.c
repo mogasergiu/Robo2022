@@ -28,7 +28,11 @@ static inline void init_gpios()
 
 static inline int lsm6dsox_accelerometer_probe()
 {
-    return i2c_write_byte(LSM6DSOX_I2C_BUS_ADDR, CTRL1_XL, 0b1010000);
+    uint8_t ctrl1_xl;
+
+    ctrl1_xl = (0b0101 << CTRL1_XL_ODR_CL_OFFSET) & CTRL1_XL_ODR_CL_MASK;
+
+    return i2c_write_byte(LSM6DSOX_I2C_BUS_ADDR, CTRL1_XL, ctrl1_xl);
 }
 
 static int lsm6dsox_accelerometer_get_x()
@@ -93,7 +97,11 @@ static const position_ops_t lsm6dsox_accelerometer_position_ops = {
 
 static inline int lsm6dsox_gyroscope_probe()
 {
-    return i2c_write_byte(LSM6DSOX_I2C_BUS_ADDR, CTRL2_G, 0b1010000);
+    uint8_t ctrl2_g;
+
+    ctrl2_g = (0b0101 << CTRL2_G_ODR_G_OFFSET) & CTRL2_G_ODR_MASK_G;
+
+    return i2c_write_byte(LSM6DSOX_I2C_BUS_ADDR, CTRL2_G, ctrl2_g);
 }
 
 static int lsm6dsox_gyroscope_get_x()
