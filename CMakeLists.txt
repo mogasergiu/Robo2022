@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 include_directories(include)
 add_executable(${PROJECT_NAME}
-        main.c
+        core0.c
+        core1.c
         drivers/i2c.c
         drivers/lsm6dsox.c
 )
@@ -18,6 +19,8 @@ target_link_libraries(${PROJECT_NAME}
             hardware_gpio
             hardware_adc
             hardware_i2c
+            hardware_sync
+            pico_multicore
 )
 
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
