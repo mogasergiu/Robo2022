@@ -9,10 +9,10 @@
 #include <gpio.h>
 #include <pwm.h>
 
-#define MOTOR_RIGHT_BACK 0
-#define MOTOR_RIGHT_FRONT 1
-#define MOTOR_LEFT_BACK 2
-#define MOTOR_LEFT_FRONT 3
+#define MOTOR_LEFT_BACK 0
+#define MOTOR_LEFT_FRONT 1
+#define MOTOR_RIGHT_BACK 2
+#define MOTOR_RIGHT_FRONT 3
 
 #define SENSOR_LOWER_LEFT (1 << 0)  // D9_GPIO21
 #define SENSOR_LOWER_RIGHT (1 << 1)  // D12_GPIO4_CIPO
@@ -210,41 +210,39 @@ void core1_main() {
                 break;
             }
 
-        pr_debug("sensor_mask %hhu j %d\n", sensor_mask, j);
-
         switch (sensor_mask) {
         case SENSOR_LOWER_LEFT:
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 20);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 10);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 10);
 
             break;
         case SENSOR_LOWER_RIGHT:
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 20);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 10);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 10);
 
             break;
         case SENSOR_MIDDLE:
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 10);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 10);
 
             break;
         case SENSOR_UPPER_LEFT:
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 30);
 
             break;
         case SENSOR_UPPER_RIGHT:
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 30);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
 
             break;
@@ -252,28 +250,28 @@ void core1_main() {
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 70);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
 
             break;
         case (SENSOR_LOWER_RIGHT | SENSOR_UPPER_RIGHT):
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 70);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 40);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
 
             break;
         case (SENSOR_UPPER_LEFT | SENSOR_MIDDLE):
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 70);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 90);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 40);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
 
             break;
         case (SENSOR_UPPER_RIGHT | SENSOR_MIDDLE):
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
             pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 90);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 70);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
 
             break;
         case 0:
