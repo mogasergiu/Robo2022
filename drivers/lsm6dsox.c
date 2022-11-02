@@ -40,14 +40,14 @@ static int lsm6dsox_accelerometer_get_x()
     uint8_t reg, value;
     int16_t x;
 
-    reg = OUTX_L_A;
-    i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
-    pr_debug("%s:%u OUTX_L_A %hhu\n", __func__, __LINE__, value);
-    x = (int16_t) value << 8;
-
     reg = OUTX_H_A;
     i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
     pr_debug("%s:%u OUTX_H_A %hhu\n", __func__, __LINE__, value);
+    x = (int16_t) value << 8;
+
+    reg = OUTX_L_A;
+    i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
+    pr_debug("%s:%u OUTX_L_A %hhu\n", __func__, __LINE__, value);
     x += value;
 
     return lsm6dsox.apos.x = x;
@@ -58,14 +58,14 @@ static int lsm6dsox_accelerometer_get_y()
     uint8_t reg, value;
     int16_t y;
 
-    reg = OUTY_L_A;
-    i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
-    pr_debug("%s:%u OUTY_L_A %hhu\n", __func__, __LINE__, value);
-    y = (int16_t) value << 8;
-
     reg = OUTY_H_A;
     i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
     pr_debug("%s:%u OUTY_H_A %hhu\n", __func__, __LINE__, value);
+    y = (int16_t) value << 8;
+
+    reg = OUTY_L_A;
+    i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
+    pr_debug("%s:%u OUTY_L_A %hhu\n", __func__, __LINE__, value);
     y += value;
 
     return lsm6dsox.apos.y = y;
@@ -76,14 +76,14 @@ static int lsm6dsox_accelerometer_get_z()
     uint8_t reg, value;
     int16_t z;
 
-    reg = OUTZ_L_A;
-    i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
-    pr_debug("%s:%u OUTZ_L_A %hhu\n", __func__, __LINE__, value);
-    z = (int16_t) value << 8;
-
     reg = OUTZ_H_A;
     i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
     pr_debug("%s:%u OUTZ_H_A %hhu\n", __func__, __LINE__, value);
+    z = (int16_t) value << 8;
+
+    reg = OUTZ_L_A;
+    i2c_read_byte(LSM6DSOX_I2C_BUS_ADDR, reg, &value);
+    pr_debug("%s:%u OUTZ_L_A %hhu\n", __func__, __LINE__, value);
     z += value;
 
     return lsm6dsox.apos.z = z;
