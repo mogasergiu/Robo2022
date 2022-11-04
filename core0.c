@@ -23,42 +23,68 @@ static gpio_t gpios[] = {
         .func = GPIO_FUNC_PIO0,
     },
     {
-        .num = D6_GPIO18,   // start-stop INT
+        .num = D6_GPIO18,   // button INT
         .is_irq = true,
         .irq_type = GPIO_IRQ_EDGE_RISE,
         .func = GPIO_FUNC_PIO0,
     },
     {
-        .num = D7_GPIO19,   // button INT
+        .num = D7_GPIO19,   // start-stop INT
         .is_irq = true,
-        .irq_type = GPIO_IRQ_EDGE_FALL,
+        .irq_type = GPIO_IRQ_EDGE_RISE,
         .func = GPIO_FUNC_PIO0,
     },
     {
-        .num = D13_GPIO6_SCK,   // buton INT
+        .num = D13_GPIO6_SCK,   // button INT
         .is_irq = true,
         .irq_type = GPIO_IRQ_EDGE_FALL,
         .func = GPIO_FUNC_PIO0,
     },
 };
 
+bool mleft_moving_fw, mright_moving_fw, start_stop;
+uint8_t b1, b2;
+
 static void gpio_irq_handler(uint gpio_num, uint32_t event_mask)
 {
     switch (gpio_num) {
     case D6_GPIO18:
-        pr_debug("D6_GPIO18 start-stop interrupt\n");
+        printf("D6_GPIO18 button\n");
+        b1++;
         break;
     case D7_GPIO19:
-        pr_debug("D7_GPIO19 button INT\n");
+        if(event_mask & GPIO_IRQ_EDGE_RISE){
+            start_stop = 1;
+            printf("D7_GPIO19 start\n");
+            gpio_set_irq_enabled(gpio_num, GPIO_IRQ_EDGE_FALL, true);
+        } else {
+            start_stop = 0;
+            printf("D7_GPIO19 stop\n");
+            gpio_set_irq_enabled(gpio_num, GPIO_IRQ_EDGE_RISE, true);   
+        }
+        
         break;
     case D13_GPIO6_SCK:
-        pr_debug("D13_GPIO6_SCK button INT\n");
+        printf("D13_GPIO6_SCK button INT\n");
+        b2++;
         break;
     case D14_GPIO26_A0:
-        pr_debug("D14_GPIO26_A0 button INT\n");
+        pr_debug("D14_GPIO26_A0 Left Motor Encoder INT\n");
+
+        if (gpio_get(D15_GPIO27_A1))
+            mleft_moving_fw = false;
+        else
+            mleft_moving_fw = true;
+
         break;
     case D16_GPIO28_A2:
-        pr_debug("D16_GPIO28_A2 button INT\n");
+        pr_debug("D16_GPIO28_A2 Right Motor Encoder INT\n");
+ 
+        if (gpio_get(D17_GPIO29_A3))
+            mright_moving_fw = true;
+        else
+            mright_moving_fw = false;
+
         break;
     }
 }
@@ -87,6 +113,12 @@ static int init_all()
         return ret;
     }
 
+    gpio_init(D15_GPIO27_A1);
+    gpio_set_dir(D15_GPIO27_A1, false);
+
+    gpio_init(D17_GPIO29_A3);
+    gpio_set_dir(D17_GPIO29_A3, false);
+
     gpio_set_irq_callback(&gpio_irq_handler);
     irq_set_enabled(IO_IRQ_BANK0, true);
 
@@ -107,9 +139,18 @@ static int init_all()
 
 extern void core1_main();
 
+#define ACC_OX_LEFT_RIGHT_AXIS (1 << 0)
+#define ACC_OY_FRONT_BACK_AXIS (1 << 1)
+#define GYRO_OZ_LEFT_ORIENTATION (1 << 3)
+#define GYRO_OZ_RIGHT_ORIENTATION (1 << 4)
+#define GYRO_OX_UP_DOWN_ORIENTATION (1 << 5)
+uint8_t dir_mask;
+
 float acc_Rx, acc_Ry, acc_Rz, acc_R;
 float gyro_Rx, gyro_Ry, gyro_Rz, gyro_R;
-const float acc_Ry_error = .3f;
+const float acc_Rx_error = -.02f;
+const float acc_Ry_error = -.029f;
+const float gyro_Rx_error = -18.7f;
 
 static inline void update_position()
 {
@@ -162,6 +203,7 @@ static inline void update_position()
 }
 
 int main() {
+    int up_down, left_right, front_back;
     multicore_launch_core1(core1_main);
     init_all();
 
@@ -170,21 +212,56 @@ int main() {
         // printf("g.x %d\ng.y %d\ng.z %d\na.x %d\na.y %d\na.z %d\n",
         //         lsm6dsox.gyro->get_x(), lsm6dsox.gyro->get_y(), lsm6dsox.gyro->get_z(),
         //         lsm6dsox.acc->get_x(), lsm6dsox.acc->get_y(), lsm6dsox.acc->get_z());
+        dir_mask = 0;
+
         update_position();
+    //         printf("Ox - stanga/dreapta %f %d\n", (acc_Rx - acc_Rx_error) * 10, (int)((acc_Rx - acc_Rx_error) * 10));
 
-        if ((int)acc_Rx != -2)
-            printf("Ox - stanga/dreapta %d\n", (int)acc_Rx);
+    //     if ((int)((acc_Rx - acc_Rx_error) * 10) != -28) {
+    //         dir_mask |= ACC_OX_LEFT_RIGHT_AXIS;
+    //     }
+    //         printf("Oy - fata/spate %f %d\n", (acc_Ry - acc_Ry_error) * 10, (int)((acc_Ry - acc_Ry_error) * 10));
 
-        if ((int)(acc_Ry - acc_Ry_error) != -3)
-            printf("Oy - fata/spate %d\n", (int)(acc_Ry - acc_Ry_error));
+    //     if ((int)((acc_Ry - acc_Ry_error) * 10) != -30) {
+    //         dir_mask |= ACC_OY_FRONT_BACK_AXIS;
+    //     }
+    //         printf("Ox - sus/jos %f %d\n", (gyro_Rx + gyro_Rx_error) / 10, (int)((acc_Ry - acc_Ry_error) * 10));
 
-        if ((int)gyro_Rx / 100 != -6)
-            printf("Ox - sus/jos %d\n", (int)gyro_Rx / 100);
+    //     if ((int)((gyro_Rx + gyro_Rx_error) / 10) != -63) {
+    //         dir_mask |= GYRO_OX_UP_DOWN_ORIENTATION;
+    //         dir_mask &= ~ACC_OY_FRONT_BACK_AXIS;
+    //     }
 
-        if ((int)gyro_Rz / 100 > -6)
-            printf("Oz - rotatie spre dreapta %d\n", (int)gyro_Rz / 100);
-        else if ((int)gyro_Rz / 100 < -6)
-            printf("Oz - rotatie spre stanga %d\n", (int)gyro_Rz / 100);
+    // printf("Oz - rotatie spre dreapta %f %d\n", gyro_Rz / 10, (int)gyro_Rz / 10);
+    //     if ((int)gyro_Rz / 10 > -61) {
+    //         dir_mask |= GYRO_OZ_RIGHT_ORIENTATION;
+    //         pr_debug("Oz - rotatie spre dreapta %d\n", (int)gyro_Rz / 10);
+
+    //     } else if ((int)gyro_Rz / 10 < -61) {
+    //         dir_mask |= GYRO_OZ_LEFT_ORIENTATION;
+    //         pr_debug("Oz - rotatie spre stanga %d\n", (int)gyro_Rz / 10);
+    //     }
+
+        left_right = (int)((acc_Rx - acc_Rx_error) * 10);
+        if (left_right <= -28 - 2 || left_right >= -28 + 2) {
+            dir_mask |= ACC_OX_LEFT_RIGHT_AXIS;
+            pr_debug("Ox - stanga/dreapta %f %d\n", (acc_Rx - acc_Rx_error) * 10, left_right);
+        }
+
+        front_back = (int)((acc_Ry - acc_Ry_error) * 10);
+        if (front_back <= -30 - 2 || front_back >= -30 + 2) {
+            dir_mask |= ACC_OY_FRONT_BACK_AXIS;
+            pr_debug("Oy - fata/spate %f %d\n", (acc_Ry - acc_Ry_error) * 10, front_back);
+        }
+
+        up_down = (int)((gyro_Rx + gyro_Rx_error) / 10);
+        if (up_down <= -63 - 2 || up_down >= -63 + 2) {
+            dir_mask |= GYRO_OX_UP_DOWN_ORIENTATION;
+            dir_mask &= ~ACC_OY_FRONT_BACK_AXIS;
+            pr_debug("Ox - sus/jos %f %d\n", (gyro_Rx + gyro_Rx_error) / 10, up_down);
+        }
+
+        printf("dir_mask %hhu\n", dir_mask);
 
         sleep_ms(100);
     }
