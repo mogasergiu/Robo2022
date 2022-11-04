@@ -9,10 +9,10 @@
 #include <gpio.h>
 #include <pwm.h>
 
-#define MOTOR_LEFT_BACK 0
-#define MOTOR_LEFT_FRONT 1
-#define MOTOR_RIGHT_BACK 2
-#define MOTOR_RIGHT_FRONT 3
+#define MOTOR_LEFT_FRONT 0
+#define MOTOR_LEFT_BACK 1
+#define MOTOR_RIGHT_FRONT 2
+#define MOTOR_RIGHT_BACK 3
 
 #define SENSOR_LOWER_LEFT (1 << 0)  // D9_GPIO21
 #define SENSOR_LOWER_RIGHT (1 << 1)  // D12_GPIO4_CIPO
@@ -79,7 +79,14 @@ static gpio_t gpios[] = {
     },
 };
 
+#define ATTACK_WAIT (1 << 0)  // 
+#define ATTACK_GRADUAL (1 << 1)
+static uint8_t strat_mask;
+
 static uint8_t sensor_mask;
+extern uint8_t dir_mask;
+extern bool mleft_moving_fw, mright_moving_fw, start_stop;
+extern uint8_t b1, b2;
 
 static inline void invert_irq_and_set_sensor_bit(uint gpio_num, uint8_t sensor_bit,
                                                  enum gpio_irq_level irq_type)
@@ -170,12 +177,485 @@ static int init_all()
     return 0;
 }
 
+int64_t attack_wait_handler(alarm_id_t id, void *user_data) {
+    switch (sensor_mask) {
+        case SENSOR_LOWER_LEFT:
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 10);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 10);
+
+            // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                // Dacă detectam deplasare pe axa oy și senzorul stânga este activ înseamnă ca ne deplasam spre dreapta.
+
+            break;
+        case SENSOR_LOWER_RIGHT:
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 10);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 10);
+
+            // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                // Dacă detectam deplasare pe axa oy și senzorul dreapta este activ înseamnă ca ne deplasam spre stanga.
+
+            break;
+        case SENSOR_MIDDLE:
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 10);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 10);
+
+            // if (dir_mask & GYRO_OX_UP_DOWN_ORIENTATION)
+                // if (mleft_moving_fw && mright_moving_fw)
+                    // Dacă detectam mișcare giroscopica pe axa ox(ne ridicam) + mișcare pe axa oy de la accelerometru și senzorul din fata este activ și encoderele dau o defazate cu pi/2 atunci oponentul ne-a ridicat, dar îl împingem
+                //else
+                    // Dacă detectam mișcare giroscopica pe axa ox(ne ridicam) + mișcare pe axa oy de la accelerometru și senzorul din fata este activ și encoderele dau o defazate cu -pi/2 atunci oponentul ne-a ridicat și ne împinge
+
+            break;
+        case SENSOR_UPPER_LEFT:
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 30);
+
+            // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                // Dacă detectam deplasare pe axa oy și senzorul stânga este activ înseamnă ca ne deplasam spre dreapta.
+
+            break;
+        case SENSOR_UPPER_RIGHT:
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 30);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
+
+            // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                // Dacă detectam deplasare pe axa oy și senzorul dreapta este activ înseamnă ca ne deplasam spre stanga.
+
+            break;
+        case (SENSOR_LOWER_LEFT | SENSOR_UPPER_LEFT):
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
+
+            // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                // Dacă detectam deplasare pe axa oy și senzorul stânga este activ înseamnă ca ne deplasam spre dreapta.
+
+            break;
+        case (SENSOR_LOWER_RIGHT | SENSOR_UPPER_RIGHT):
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 40);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
+
+            // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                // Dacă detectam deplasare pe axa oy și senzorul dreapta este activ înseamnă ca ne deplasam spre stanga.
+
+            break;
+        case (SENSOR_UPPER_LEFT | SENSOR_MIDDLE):
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 40);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+
+            break;
+        case (SENSOR_UPPER_RIGHT | SENSOR_MIDDLE):
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
+
+            break;
+        case 0:
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
+            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+
+            // if (dir_mask & GYRO_OX_UP_DOWN_ORIENTATION)
+                // Dacă detectam mișcare giroscopica pe axa ox(ne ridicam) + mișcare pe axa oy de la accelerometru și senzorul din fata nu este activ (după terminarea Mișcării de strategie) atunci ne împinge din spate și ne-a ridicat
+        }
+
+    return 0;
+}
+
+#define ACC_OX_LEFT_RIGHT_AXIS (1 << 0)
+#define ACC_OY_FRONT_BACK_AXIS (1 << 1)
+#define GYRO_OZ_LEFT_ORIENTATION (1 << 3)
+#define GYRO_OZ_RIGHT_ORIENTATION (1 << 4)
+#define GYRO_OX_UP_DOWN_ORIENTATION (1 << 5)
+
 void core1_main() {
     int i;
 
     init_all();
 
-    while (true) {
+    start_stop = 1;
+
+    while (!start_stop);
+
+    sleep_ms(5000);
+
+    printf("%hhu\n", start_stop);
+
+    switch (b1) {
+    case 0:
+        switch (b2) {
+            case 1:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                sleep_ms(500);
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 2:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 80);
+
+                sleep_ms(300);
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 3:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 80);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                sleep_ms(300);
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 4:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+
+                sleep_ms(300);
+
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 80);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 5:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 50);
+
+                sleep_ms(300);
+
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 80);
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+        }
+        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+        break;
+    case 1:
+        switch (b2) {
+            case 1:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+
+                sleep_ms(300);
+
+                for (i = 4; i < 9; i++)
+                switch(gpios[i].num) {
+                case D10_GPIO5:
+                    if (gpio_get(D10_GPIO5))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D8_GPIO20:
+                    if (gpio_get(D8_GPIO20))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D11_GPIO7_COPI:
+                    if (gpio_get(D11_GPIO7_COPI))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D9_GPIO21:
+                    if (gpio_get(D9_GPIO21))
+                        sensor_mask &= ~(1 << (i - 4));
+                    else
+                        sensor_mask |= (1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D12_GPIO4_CIPO:
+                    if (gpio_get(D12_GPIO4_CIPO))
+                        sensor_mask &= ~(1 << (i - 4));
+                    else
+                        sensor_mask |= (1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                }
+
+                if (sensor_mask == SENSOR_MIDDLE &&
+                    dir_mask & ACC_OY_FRONT_BACK_AXIS &&
+                    !mleft_moving_fw && !mright_moving_fw) {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 100);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 100);
+                }
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 2:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 80);
+
+                sleep_ms(300);
+
+                for (i = 4; i < 9; i++)
+                switch(gpios[i].num) {
+                case D10_GPIO5:
+                    if (gpio_get(D10_GPIO5))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D8_GPIO20:
+                    if (gpio_get(D8_GPIO20))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D11_GPIO7_COPI:
+                    if (gpio_get(D11_GPIO7_COPI))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D9_GPIO21:
+                    if (gpio_get(D9_GPIO21))
+                        sensor_mask &= ~(1 << (i - 4));
+                    else
+                        sensor_mask |= (1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D12_GPIO4_CIPO:
+                    if (gpio_get(D12_GPIO4_CIPO))
+                        sensor_mask &= ~(1 << (i - 4));
+                    else
+                        sensor_mask |= (1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                }
+
+                if (sensor_mask == SENSOR_MIDDLE &&
+                    dir_mask & ACC_OY_FRONT_BACK_AXIS &&
+                    !mleft_moving_fw && !mright_moving_fw) {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 100);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 100);
+                }
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 3:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 80);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                sleep_ms(300);
+
+                for (i = 4; i < 9; i++)
+                switch(gpios[i].num) {
+                case D10_GPIO5:
+                    if (gpio_get(D10_GPIO5))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D8_GPIO20:
+                    if (gpio_get(D8_GPIO20))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D11_GPIO7_COPI:
+                    if (gpio_get(D11_GPIO7_COPI))
+                        sensor_mask |= (1 << (i - 4));
+                    else
+                        sensor_mask &= ~(1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D9_GPIO21:
+                    if (gpio_get(D9_GPIO21))
+                        sensor_mask &= ~(1 << (i - 4));
+                    else
+                        sensor_mask |= (1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                case D12_GPIO4_CIPO:
+                    if (gpio_get(D12_GPIO4_CIPO))
+                        sensor_mask &= ~(1 << (i - 4));
+                    else
+                        sensor_mask |= (1 << (i - 4));
+                        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                    break;
+                }
+                
+                if (sensor_mask == SENSOR_MIDDLE &&
+                    dir_mask & ACC_OY_FRONT_BACK_AXIS &&
+                    !mleft_moving_fw && !mright_moving_fw) {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 100);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 100);
+                }
+    
+    printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 4:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+
+                sleep_ms(300);
+
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 80);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                strat_mask |= ATTACK_WAIT;
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 5:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 50);
+
+                sleep_ms(300);
+
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 80);
+
+                strat_mask |= ATTACK_WAIT;
+    
+    printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+        }
+        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+        break;
+    case 2:
+        switch (b2) {
+            case 1:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                sleep_ms(500);
+
+                strat_mask |= ATTACK_GRADUAL;
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 2:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 80);
+
+                sleep_ms(300);
+
+                strat_mask |= ATTACK_GRADUAL;
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 3:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 80);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                sleep_ms(300);
+
+                strat_mask |= ATTACK_GRADUAL;
+    
+    printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 4:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+
+                sleep_ms(300);
+
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 80);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+
+                strat_mask |= ATTACK_GRADUAL;
+
+printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+            case 5:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 50);
+
+                sleep_ms(300);
+
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 80);
+
+                strat_mask |= ATTACK_GRADUAL;
+    
+    printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+                break;
+        }
+        printf("line %u, b1 %hhu, b2 %hhu\n", __LINE__, b1, b2);
+        break;
+    }
+
+    while (start_stop) {
+    //    printf("dadjaksd\n");
         for (i = 4; i < 9; i++)
             switch(gpios[i].num) {
             case D10_GPIO5:
@@ -210,75 +690,184 @@ void core1_main() {
                 break;
             }
 
-        switch (sensor_mask) {
-        case SENSOR_LOWER_LEFT:
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 10);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 10);
+        if (strat_mask & ATTACK_WAIT)
+            add_alarm_in_ms(300, attack_wait_handler, NULL, false);
+        else
+            switch (sensor_mask) {
+            case SENSOR_LOWER_LEFT:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
 
-            break;
-        case SENSOR_LOWER_RIGHT:
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 10);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 10);
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 60);
+                }
 
-            break;
-        case SENSOR_MIDDLE:
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 10);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 10);
+                // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                    // Dacă detectam deplasare pe axa oy și senzorul stânga este activ înseamnă ca ne deplasam spre dreapta.
 
-            break;
-        case SENSOR_UPPER_LEFT:
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 30);
+                break;
+            case SENSOR_LOWER_RIGHT:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
 
-            break;
-        case SENSOR_UPPER_RIGHT:
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 30);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 60);                    
+                }
 
-            break;
-        case (SENSOR_LOWER_LEFT | SENSOR_UPPER_LEFT):
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
+                // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                    // Dacă detectam deplasare pe axa oy și senzorul dreapta este activ înseamnă ca ne deplasam spre stanga.
 
-            break;
-        case (SENSOR_LOWER_RIGHT | SENSOR_UPPER_RIGHT):
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 40);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
+                break;
+            case SENSOR_MIDDLE:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
 
-            break;
-        case (SENSOR_UPPER_LEFT | SENSOR_MIDDLE):
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 40);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 50);
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);
+                }
 
-            break;
-        case (SENSOR_UPPER_RIGHT | SENSOR_MIDDLE):
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 50);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
+                // if (dir_mask & GYRO_OX_UP_DOWN_ORIENTATION)
+                    // if (mleft_moving_fw && mright_moving_fw)
+                        // Dacă detectam mișcare giroscopica pe axa ox(ne ridicam) + mișcare pe axa oy de la accelerometru și senzorul din fata este activ și encoderele dau o defazate cu pi/2 atunci oponentul ne-a ridicat, dar îl împingem
+                    //else
+                        // Dacă detectam mișcare giroscopica pe axa ox(ne ridicam) + mișcare pe axa oy de la accelerometru și senzorul din fata este activ și encoderele dau o defazate cu -pi/2 atunci oponentul ne-a ridicat și ne împinge
 
-            break;
-        case 0:
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
-            pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
-        }
+                break;
+            case SENSOR_UPPER_LEFT:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 30);
+
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {                        
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);                    
+                }
+                // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                    // Dacă detectam deplasare pe axa oy și senzorul stânga este activ înseamnă ca ne deplasam spre dreapta.
+
+                break;
+            case SENSOR_UPPER_RIGHT:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 30);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 20);
+
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {                        
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);                    
+                }                
+                // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                    // Dacă detectam deplasare pe axa oy și senzorul dreapta este activ înseamnă ca ne deplasam spre stanga.
+
+                break;
+            case (SENSOR_LOWER_LEFT | SENSOR_UPPER_LEFT):
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 20);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 40);
+
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {                        
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);                    
+                }
+                // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                    // Dacă detectam deplasare pe axa oy și senzorul stânga este activ înseamnă ca ne deplasam spre dreapta.
+
+                break;
+            case (SENSOR_LOWER_RIGHT | SENSOR_UPPER_RIGHT):
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {                        
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);                    
+                }
+                // if (dir_mask & ACC_OX_LEFT_RIGHT_AXIS)
+                    // Dacă detectam deplasare pe axa oy și senzorul dreapta este activ înseamnă ca ne deplasam spre stanga.
+
+                break;
+            case (SENSOR_UPPER_LEFT | SENSOR_MIDDLE):
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {                        
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);                    
+                }
+
+                break;
+            case (SENSOR_UPPER_RIGHT | SENSOR_MIDDLE):
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+
+                if (strat_mask & ATTACK_GRADUAL) {
+                    for (i = 60; i <= 100; i++) {                        
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], i);
+                        pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], i);
+                    }
+                } else {
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 60);
+                    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 60);                    
+                }
+
+                break;
+            case 0:
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
+                pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+
+                // if (dir_mask & GYRO_OX_UP_DOWN_ORIENTATION)
+                    // Dacă detectam mișcare giroscopica pe axa ox(ne ridicam) + mișcare pe axa oy de la accelerometru și senzorul din fata nu este activ (după terminarea Mișcării de strategie) atunci ne împinge din spate și ne-a ridicat
+            }
     }
+
+    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_BACK], 0);
+    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_BACK], 0);
+    pwm_gpio_set_duty_cycle(&gpios[MOTOR_LEFT_FRONT], 0);
+    pwm_gpio_set_duty_cycle(&gpios[MOTOR_RIGHT_FRONT], 0);
 }
