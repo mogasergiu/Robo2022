@@ -94,9 +94,6 @@ static int init_all()
     int i, ret;
     size_t ngpios;
 
-    /*
-     * Enable Serial Interface
-     */
     stdio_init_all();
 
 #if DEBUG
@@ -260,10 +257,6 @@ int main() {
             dir_mask &= ~ACC_OY_FRONT_BACK_AXIS;
             pr_debug("Ox - sus/jos %f %d\n", (gyro_Rx + gyro_Rx_error) / 10, up_down);
         }
-
-        printf("dir_mask %hhu\n", dir_mask);
-
-        sleep_ms(100);
     }
     return 0;
 }
