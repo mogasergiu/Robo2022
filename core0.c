@@ -52,6 +52,7 @@ static void gpio_irq_handler(uint gpio_num, uint32_t event_mask)
         printf("D6_GPIO18 button\n");
         b1++;
         break;
+
     case D7_GPIO19:
         if(event_mask & GPIO_IRQ_EDGE_RISE){
             start_stop = 1;
@@ -68,6 +69,7 @@ static void gpio_irq_handler(uint gpio_num, uint32_t event_mask)
         printf("D13_GPIO6_SCK button INT\n");
         b2++;
         break;
+
     case D14_GPIO26_A0:
         pr_debug("D14_GPIO26_A0 Left Motor Encoder INT\n");
 
@@ -77,6 +79,7 @@ static void gpio_irq_handler(uint gpio_num, uint32_t event_mask)
             mleft_moving_fw = true;
 
         break;
+
     case D16_GPIO28_A2:
         pr_debug("D16_GPIO28_A2 Right Motor Encoder INT\n");
  
@@ -109,12 +112,6 @@ static int init_all()
         pr_debug("%s:%u Failed to probe LSM6DSOX\n", __func__, __LINE__);
         return ret;
     }
-
-    gpio_init(D15_GPIO27_A1);
-    gpio_set_dir(D15_GPIO27_A1, false);
-
-    gpio_init(D17_GPIO29_A3);
-    gpio_set_dir(D17_GPIO29_A3, false);
 
     gpio_set_irq_callback(&gpio_irq_handler);
     irq_set_enabled(IO_IRQ_BANK0, true);
@@ -201,7 +198,9 @@ static inline void update_position()
 
 int main() {
     int up_down, left_right, front_back;
+
     multicore_launch_core1(core1_main);
+
     init_all();
 
     while (true) {
@@ -258,5 +257,6 @@ int main() {
             pr_debug("Ox - sus/jos %f %d\n", (gyro_Rx + gyro_Rx_error) / 10, up_down);
         }
     }
+
     return 0;
 }
