@@ -23,26 +23,6 @@
 // Only sensor IRQ's
 static gpio_t gpios[] = {
     {
-        .num = D3_GPIO15,
-        .func = GPIO_FUNC_PWM,
-        .is_out = true,
-    },
-    {
-        .num = D5_GPIO17,
-        .func = GPIO_FUNC_PWM,
-        .is_out = true,
-    },
-    {
-        .num = D2_GPIO25,
-        .func = GPIO_FUNC_PWM,
-        .is_out = true,
-    },
-    {
-        .num = D4_GPIO16,
-        .func = GPIO_FUNC_PWM,
-        .is_out = true,
-    },
-    {
         .num = D10_GPIO5,  // 0 to 3v3
         // .is_irq = true,
         .irq_type = GPIO_IRQ_EDGE_RISE,
@@ -76,6 +56,26 @@ static gpio_t gpios[] = {
         .irq_type = GPIO_IRQ_EDGE_FALL,
         // .func = GPIO_FUNC_PIO1,
         // .is_out = true,
+    },
+    {
+        .num = D3_GPIO15,
+        .func = GPIO_FUNC_PWM,
+        .is_out = true,
+    },
+    {
+        .num = D5_GPIO17,
+        .func = GPIO_FUNC_PWM,
+        .is_out = true,
+    },
+    {
+        .num = D2_GPIO25,
+        .func = GPIO_FUNC_PWM,
+        .is_out = true,
+    },
+    {
+        .num = D4_GPIO16,
+        .func = GPIO_FUNC_PWM,
+        .is_out = true,
     },
 };
 
@@ -339,45 +339,45 @@ void core1_main() {
 
                 sleep_ms(300);
 
-                for (i = 4; i < 9; i++)
+                for (i = 0; i < 5; i++)
                 switch(gpios[i].num) {
                 case D10_GPIO5:
                     if (gpio_get(D10_GPIO5))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D8_GPIO20:
                     if (gpio_get(D8_GPIO20))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D11_GPIO7_COPI:
                     if (gpio_get(D11_GPIO7_COPI))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D9_GPIO21:
                     if (gpio_get(D9_GPIO21))
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                     else
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                 
 
                     break;
                 case D12_GPIO4_CIPO:
                     if (gpio_get(D12_GPIO4_CIPO))
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                     else
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                 
 
                     break;
@@ -401,45 +401,45 @@ void core1_main() {
 
                 sleep_ms(300);
 
-                for (i = 4; i < 9; i++)
+                for (i = 0; i < 5; i++)
                 switch(gpios[i].num) {
                 case D10_GPIO5:
                     if (gpio_get(D10_GPIO5))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D8_GPIO20:
                     if (gpio_get(D8_GPIO20))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D11_GPIO7_COPI:
                     if (gpio_get(D11_GPIO7_COPI))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D9_GPIO21:
                     if (gpio_get(D9_GPIO21))
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                     else
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                 
 
                     break;
                 case D12_GPIO4_CIPO:
                     if (gpio_get(D12_GPIO4_CIPO))
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                     else
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                 
 
                     break;
@@ -463,45 +463,45 @@ void core1_main() {
 
                 sleep_ms(300);
 
-                for (i = 4; i < 9; i++)
+                for (i = 0; i < 5; i++)
                 switch(gpios[i].num) {
                 case D10_GPIO5:
                     if (gpio_get(D10_GPIO5))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D8_GPIO20:
                     if (gpio_get(D8_GPIO20))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D11_GPIO7_COPI:
                     if (gpio_get(D11_GPIO7_COPI))
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                     else
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                 
 
                     break;
                 case D9_GPIO21:
                     if (gpio_get(D9_GPIO21))
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                     else
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                 
 
                     break;
                 case D12_GPIO4_CIPO:
                     if (gpio_get(D12_GPIO4_CIPO))
-                        sensor_mask &= ~(1 << (i - 4));
+                        sensor_mask &= ~(1 << (i));
                     else
-                        sensor_mask |= (1 << (i - 4));
+                        sensor_mask |= (1 << (i));
                 
 
                     break;
@@ -632,37 +632,37 @@ void core1_main() {
 
     while (start_stop) {
     //    printf("dadjaksd\n");
-        for (i = 4; i < 9; i++)
+        for (i = 0; i < 5; i++)
             switch(gpios[i].num) {
             case D10_GPIO5:
                 if (gpio_get(D10_GPIO5))
-                    sensor_mask |= (1 << (i - 4));
+                    sensor_mask |= (1 << (i));
                 else
-                    sensor_mask &= ~(1 << (i - 4));
+                    sensor_mask &= ~(1 << (i));
                 break;
             case D8_GPIO20:
                 if (gpio_get(D8_GPIO20))
-                    sensor_mask |= (1 << (i - 4));
+                    sensor_mask |= (1 << (i));
                 else
-                    sensor_mask &= ~(1 << (i - 4));
+                    sensor_mask &= ~(1 << (i));
                 break;
             case D11_GPIO7_COPI:
                 if (gpio_get(D11_GPIO7_COPI))
-                    sensor_mask |= (1 << (i - 4));
+                    sensor_mask |= (1 << (i));
                 else
-                    sensor_mask &= ~(1 << (i - 4));
+                    sensor_mask &= ~(1 << (i));
                 break;
             case D9_GPIO21:
                 if (gpio_get(D9_GPIO21))
-                    sensor_mask &= ~(1 << (i - 4));
+                    sensor_mask &= ~(1 << (i));
                 else
-                    sensor_mask |= (1 << (i - 4));
+                    sensor_mask |= (1 << (i));
                 break;
             case D12_GPIO4_CIPO:
                 if (gpio_get(D12_GPIO4_CIPO))
-                    sensor_mask &= ~(1 << (i - 4));
+                    sensor_mask &= ~(1 << (i));
                 else
-                    sensor_mask |= (1 << (i - 4));
+                    sensor_mask |= (1 << (i));
                 break;
             }
 
